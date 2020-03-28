@@ -1,17 +1,17 @@
-# Project <proj> main cmake file
+# Project mm7 main cmake file
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.1)
 
-project(proj VERSION 0.0.1)
+project(mm7 VERSION 0.0.1)
 
 # Option to install targets to env location
-if(DEFINED ENV{TEMPLATE})
-     message("-- Will install TEMPLATE binaries and libraries to location: " $ENV{TEMPLATE})
-	 set(CMAKE_INSTALL_PREFIX $ENV{TEMPLATE})
-else(DEFINED ENV{TEMPLATE})
-     message("-- Will install TEMPLATE binaries and libraries to location: " ${CMAKE_CURRENT_BINARY_DIR})
+if(DEFINED ENV{MM7_HOME})
+     message("-- Will install MM7_HOME binaries and libraries to location: " $ENV{MM7_HOME})
+	 set(CMAKE_INSTALL_PREFIX $ENV{MM7_HOME})
+else(DEFINED ENV{MM7_HOME})
+     message("-- Will install MM7_HOME binaries and libraries to location: " ${CMAKE_CURRENT_BINARY_DIR})
 	 set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
-endif(DEFINED ENV{TEMPLATE})
+endif(DEFINED ENV{MM7_HOME})
 
 
 # Disable some windows specific warnings for using more modern c functions

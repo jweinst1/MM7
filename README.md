@@ -1,2 +1,3 @@
-# cmake-win-template
-Template Repo for CMake Projects on windows
+# MM7
+
+The repo for mm7 project.
