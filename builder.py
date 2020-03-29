@@ -58,6 +58,10 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as exc:
         print("Encountered a compile time error")
         print("output=" + str(exc.output))
+        if CLEANUP_BOOL:
+            print("Cleaning up the directory '" + TEMP_DIR_NAME + "'")
+            os.chdir('..')
+            shutil.rmtree(TEMP_DIR_NAME)
         sys.exit(4)
         
     if TEST_BOOL:
