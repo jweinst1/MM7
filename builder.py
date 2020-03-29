@@ -11,6 +11,9 @@ CLEANUP_BOOL = False
 TEST_FLAG = '--test'
 TEST_BOOL = False
 
+INSTALL_FLAG = '--install'
+INSTALL_BOOL = False
+
 ON_WINDOWS = sys.platform == 'win32'
 
 TEMP_DIR_NAME = 'temp_' + str(random.getrandbits(50))
@@ -23,6 +26,8 @@ if __name__ == '__main__':
             CLEANUP_BOOL = True
         if arg == TEST_FLAG:
             TEST_BOOL = True
+        if arg == INSTALL_FLAG:
+            INSTALL_BOOL = True
             
     try:
         os.mkdir(TEMP_DIR_NAME)
@@ -63,16 +68,33 @@ if __name__ == '__main__':
             except subprocess.CalledProcessError as exc:
                 print("Encountered error while running tests")
                 print("testing err=" + str(exc.output))
+                sys.exit(5)
         else:
             try:
                 test_output = subprocess.check_output(["make", "test"])
                 print(test_output)
             except subprocess.CalledProcessError as exc:
                 print("Encountered error while running tests")
-                print("testing err=" + str(exc.output))         
+                print("testing err=" + str(exc.output))
+                sys.exit(5)
         
+    if INSTALL_BOOL:
+        try:
+            if ON_WINDOWS:
+                install_output = subprocess.check_output(["msbuild", "INSTALL.vcxproj"])
+                print("Installing output:")
+                print(install_output)
+            else:
+                install_output = subprocess.check_output(["make", "install"])
+                print("Installing output:")
+                print(install_output)
+        except subprocess.CalledProcessError as exc:
+            print("Encountered error during installation")
+            print("installing err=" + str(exc.output))
+            sys.exit(6)
     
     if CLEANUP_BOOL:
+        print("Cleaning up the directory '" + TEMP_DIR_NAME + "'")
         os.chdir('..')
         shutil.rmtree(TEMP_DIR_NAME)
         
