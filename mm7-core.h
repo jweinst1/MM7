@@ -25,11 +25,12 @@ typedef struct {
 } mm7_CurrencyBank;
 
 typedef struct {
-    double rate;
-    // Future fields.
+    double currentRate;
+    double tempSelling; // Used per run of strategies
+    double tempBuying; // used per run of strategies
 } mm7_CurrencyInfo;
 /**
- * Meant to be a 2D array, tracks $S -> $b rates
+ * Meant to be a 2D array, tracks $S -> $b rates, as well as the orders.
  * for all currencies. It has bidirectional lookup.
  */
 typedef struct {
@@ -43,17 +44,6 @@ typedef struct {
     double exrate; // to cache precalculated rate.
     double revrate;
 } mm7_Order;
-
-typedef struct {
-    mm7_Order* orders;
-    size_t len;
-    size_t cap;
-} mm7_OrderBuf;
-
-typedef struct {
-    mm7_OrderBuf* stores;
-    mm7_ID lastCur;
-} mm7_OrderStore;
 
 typedef enum {
     MM7_STRATEGY_CMP_LE,
@@ -79,7 +69,7 @@ typedef struct {
 typedef struct {
     mm7_StraegyBuf sbuf;
     mm7_CurrencyInfoStore cinfos;
-    mm7_OrderStore ords;
+    size_t turns;
 } mm7_Exchange;
 
 void
@@ -110,38 +100,6 @@ mm7_Order_init(mm7_Order* o, mm7_ID s_name, double s_amount,
     o->buying.amount = b_amount;
     o->exrate = s_amount / b_amount;
     o->revrate = 1 / o->exrate;
-}
-
-void mm7_OrderBuf_init(mm7_OrderBuf* b, size_t cap)
-{
-    b->orders = calloc(sizeof(mm7_Order), cap);
-    assert(b->orders != NULL);
-    b->cap = cap;
-    b->len = 0;
-}
-
-#define MM7_ORDERBUF_ACTIVE(buf) (buf->orders != NULL)
-#define MM7_ORDERBUF_NOT_ACTIVE(buf) (buf->orders == NULL)
-
-void mm7_OrderBuf_grow(mm7_OrderBuf* b, size_t factor)
-{
-    b->cap *= factor;
-    b->orders = realloc(b->orders, sizeof(mm7_Order) * b->cap);
-    assert(b->orders != NULL);
-}
-
-#ifndef MM7_ORDERBUF_DEFAULT_CAP
-#define MM7_ORDERBUF_DEFAULT_CAP 10
-#endif
-
-void mm7_OrderBuf_place(mm7_OrderBuf* b, mm7_ID s_name, double s_amount,
-                                         mm7_ID b_name, double b_amount)
-{
-    if (MM7_ORDERBUF_NOT_ACTIVE(b))
-        mm7_OrderBuf_init(b, MM7_ORDERBUF_DEFAULT_CAP);
-    else if (b->len == b->cap)
-        mm7_OrderBuf_grow(b, 2);
-    mm7_Order_init(b->orders + b->len++, s_name, s_amount, b_name, b_amount);
 }
 
 
