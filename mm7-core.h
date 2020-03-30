@@ -73,8 +73,9 @@ typedef struct {
 
 // Top level state machine
 typedef struct {
-    mm7_StraegyBuf sbuf;
-    mm7_CurrencyInfoStore cinfos;
+    mm7_StrategyBuf sBuf;
+    mm7_CurrencyInfoStore cInfos;
+    mm7_CurrencyBank cBank;
     size_t turns;
 } mm7_Exchange;
 
@@ -103,7 +104,7 @@ void
 mm7_Strategy_init(mm7_Strategy* s,
                  mm7_ID sName,
                  mm7_ID bName,
-                 mm7_StraegyCmp cmp,
+                 mm7_StrategyCmp cmp,
                  double targetEx,
                  double toSell,
                  double toBuy)
@@ -121,7 +122,7 @@ mm7_Strategy_init(mm7_Strategy* s,
 #endif
 
 void
-mm7_StrategyBuf_init(mm7_StraegyBuf* b, size_t cap)
+mm7_StrategyBuf_init(mm7_StrategyBuf* b, size_t cap)
 {
     b->strats = calloc(sizeof(mm7_Strategy), cap);
     assert(b->strats != NULL);
@@ -130,7 +131,7 @@ mm7_StrategyBuf_init(mm7_StraegyBuf* b, size_t cap)
 }
 
 void
-mm7_StraegyBuf_grow(mm7_StraegyBuf* b, size_t factor)
+mm7_StrategyBuf_grow(mm7_StrategyBuf* b, size_t factor)
 {
     b->cap *= factor;
     b->strats = realloc(b->strats, b->cap);
@@ -138,7 +139,7 @@ mm7_StraegyBuf_grow(mm7_StraegyBuf* b, size_t factor)
 }
 
 static inline int
-mm7_StraegyBuf_isFull(const mm7_StraegyBuf* b)
+mm7_StrategyBuf_isFull(const mm7_StrategyBuf* b)
 {
     return b->len == b->cap;
 }
