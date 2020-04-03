@@ -77,7 +77,13 @@ typedef struct {
     mm7_CurrencyInfoStore cInfos;
     mm7_CurrencyBank cBank;
     size_t turns;
+    unsigned long currencies;
 } mm7_Exchange;
+
+static inline void mm7_Currency_print(const mm7_Currency* cur)
+{
+    printf("%lu : %f", cur->id, cur->amount);
+}
 
 void
 mm7_CurrencyBank_init(mm7_CurrencyBank* bank, mm7_ID last)
@@ -85,6 +91,43 @@ mm7_CurrencyBank_init(mm7_CurrencyBank* bank, mm7_ID last)
     bank->amounts = calloc(last + 1, sizeof(double));
     assert(bank->amounts != NULL);
     bank->lastCur = last;
+}
+
+void
+mm7_CurrencyBank_deinit(mm7_CurrencyBank* bank)
+{
+    assert(bank->amounts != NULL);
+    free(bank->amounts);
+    bank->amounts = NULL;
+}
+
+void mm7_CurrencyBank_add(mm7_CurrencyBank* bank, mm7_ID id, double amount)
+{
+    assert(id <= bank->lastCur);
+    bank->amounts[id] += amount;
+}
+
+/**
+ * Safely withdraws from the bank, doesn't go below zero.
+ */
+double mm7_CurrencyBank_sub(mm7_CurrencyBank* bank, mm7_ID id, double amount)
+{
+    assert(id <= bank->lastCur);
+    double toSub = amount > bank->amounts[id] ? bank->amounts[id] : amount;
+    bank->amounts[id] -= toSub;
+    return toSub;
+}
+
+void mm7_CurrencyBank_set(mm7_CurrencyBank* bank, mm7_ID id, double amount)
+{
+    assert(id <= bank->lastCur);
+    bank->amounts[id] = amount;
+}
+
+int mm7_CurrencyBank_covers(mm7_CurrencyBank* bank, mm7_ID selling, double sellAmount)
+{
+    assert(selling <= bank->lastCur && buying <= bank->lastCur);
+    return sellAmount >= bank->amounts[selling];
 }
 
 void
@@ -144,6 +187,27 @@ mm7_StrategyBuf_isFull(const mm7_StrategyBuf* b)
     return b->len == b->cap;
 }
 
+void mm7_StrategyBuf_push(mm7_StrategyBuf* b,
+                 mm7_ID sName,
+                 mm7_ID bName,
+                 mm7_StrategyCmp cmp,
+                 double targetEx,
+                 double toSell,
+                 double toBuy)
+{
+    if (mm7_StrategyBuf_isFull(b))
+        mm7_StrategyBuf_grow(b, 2);
+    mm7_Strategy_init(b->strats + b->len, sName, bName,
+                      cmp, targetEx, toSell, toBuy);
+    b->len++;
+}
+
+void mm7_StrategyBuf_deinit(mm7_StrategyBuf* b)
+{
+    free(b->strats);
+    b->strats = NULL;
+}
+
 void
 mm7_CurrencyInfoStore_init(mm7_CurrencyInfoStore* st, mm7_ID last)
 {
@@ -175,6 +239,39 @@ mm7_CurrencyInfoStore_add(mm7_CurrencyInfoStore* st, mm7_ID sellId,
     info->tempBuying.amount += buyAmount;
 }
 
+void mm7_CurrencyInfoStore_sub(mm7_CurrencyInfoStore* st, mm7_ID sellId,
+                          double sellAmount, mm7_ID buyId,
+                          double buyAmount)
+{
+    assert(sellId <= st->lastCur && buyId <= st->lastCur);
+    mm7_CurrencyInfo* info = st->infos + (sellId * st->lastCur + buyId);
+    info->tempSelling.amount -= sellAmount > info->tempSelling.amount ? info->tempSelling.amount : sellAmount;
+    info->tempBuying.amount -= buyAmount > info->tempBuying.amount ? info->tempBuying.amount : buyAmount;
+}
+
+int mm7_CurrencyInfoStore_run(const mm7_CurrencyInfoStore* infos, const mm7_Strategy* st)
+{
+    int matched = 0;
+    assert(st->sName <= infos->lastCur && st->bName <= infos->lastCur);
+    const mm7_CurrencyInfo* info = info->infos + (st->sName * infos->lastCur + st->bName);
+    if (st->cmp == MM7_STRATEGY_CMP_LE) {
+        matched = info->currentRate <= st->targetEx;
+#ifdef MM7_DEBUGS
+        printf("DEBUG %s : MATCHED: %d\n", __func__, matched);
+#endif
+    } else {
+        assert(st->cmp == MM7_STRATEGY_CMP_GE);
+        matched = info->currentRate >= st->targetEx;
+        
+    }
+    if (matched) {
+        info->tempSelling.amount += st->toSell;
+        info->tempBuying.amount += st->toBuy;
+    }
+    return matched;
+}
+
+
 void
 mm7_CurrencyInfoStore_addOrder(mm7_CurrencyInfoStore* st, const mm7_Order* o)
 {
@@ -190,6 +287,24 @@ mm7_CurrencyInfoStore_deInit(mm7_CurrencyInfoStore* st)
     assert(st->infos != NULL);
     free(st->infos);
     st->infos = NULL;
+}
+
+void
+mm7_Exchange_init(mm7_Exchange* ex, unsigned long currencies)
+{
+    ex->currencies = currencies;
+    ex->turns = 0;
+    mm7_CurrencyBank_init(&(ex->cBank), ex->currencies - 1);
+    mm7_StrategyBuf_init(&(ex->sBuf), MM7_STRATEGY_BUF_DEFAULT_CAP);
+    mm7_CurrencyInfoStore_init(&(ex->cInfos), ex->currencies - 1);
+}
+
+void
+mm7_Exchange_deinit(mm7_Exchange* ex)
+{
+    mm7_StrategyBuf_deinit(&(ex->sBuf));
+    mm7_CurrencyBank_deinit(&(ex->cBank));
+    mm7_CurrencyInfoStore_deInit(&(ex->cInfos));
 }
 
 #ifdef __cplusplus
